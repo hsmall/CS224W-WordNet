@@ -1,17 +1,25 @@
 from snap import *
 import time
 
-
+'''
+This class encapsulates all of the information needed to create, maintain, and analyze an instance of a WordNet graph.
+More specifically, this class contains the following instance variables:
+	1. parts_of_speech = A container of all included parts of speech in this graph.
+	2. synsets = A map from keys to synsets
+	3. graph = A TNEANet graph which holds the populated structure of the WordNet
+	4. node_to_word = A map from node_ids to words
+	5. word_to_node = A map from words to node_ids
+	6. all_words = A set containing every word in the graph
+	7. word_to_synset = A map from every word to a list of the keys for every synset containing the word
+'''
 class WordNet:
 
-	# Initialzes a WordNet with the following instance variables:
-	# 	1. parts_of_speech = A container of all included parts of speech in this graph.
-	#	2. synsets = A map from keys to synsets
-	#	3. graph = A TNEANet graph which holds the populated structure of the WordNet
-	#	4. node_to_word = A map from node_ids to words
-	#	5. word_to_node = A map from words to node_ids
-	#	6. all_words = A set containing every word in the graph
-	#	7. word_to_synset = A map from every word to a list of the keys for every synset containing the word
+	'''
+	Initialzes a WordNet.
+	Args:
+		filenames = list of data.* filenames which contain WordNet data.
+		parts_of_speech = list of the parts of speech this WordNet should include.
+	'''
 	def __init__(self, filenames, parts_of_speech):
 		self.parts_of_speech = parts_of_speech
 		self.synsets = self.__ReadSynsets(filenames)
@@ -22,10 +30,15 @@ class WordNet:
 			for word in synset["words"]:
 				self.word_to_synsets[word].append(key)
 
+	'''
+	Returns the pointer symbol along the directed edge (node1 -> node2)
+	'''
 	def GetSymbolOnEdge(self, node1, node2):
 		return self.graph.GetStrAttrDatE(self.graph.GetEI(node1, node2), "symbol")
 
-	# Reads in synsets from a list of data.* files
+	'''
+	Reads in synsets from a list of data.* files
+	'''
 	def __ReadSynsets(self, filenames):
 		synsets = {}
 		for filename in filenames:
@@ -43,12 +56,14 @@ class WordNet:
 
 		return synsets
 
-	# Takes a single line of a data file and converts it into a meaningful representation
-	# of a synset. A synset contains the following info:
-	# 	1. synset_type = the part of speech of synset.
-	# 	2. words = list of the words in the synset.
-	# 	3. pointers = list of pointers between this synset and others.
-	# 	4. description = given description for the synset.
+	'''
+	Takes a single line of a data file and converts it into a meaningful representation
+	of a synset. A synset contains the following info:
+		1. synset_type = the part of speech of synset.
+	 	2. words = list of the words in the synset.
+	 	3. pointers = list of pointers between this synset and others.
+	 	4. description = given description for the synset.
+	'''
 	def __ConvertToSynset(self, line):
 		key = int(line[0])
 		synset_type = line[2]
@@ -74,7 +89,9 @@ class WordNet:
 		return (key, {"synset_type": synset_type, "words": words,
 				  	  "pointers": pointers, "description": description})
 
-	# Create the basic version of the WordNet graph
+	'''
+	Create the basic version of the WordNet graph.
+	'''
 	def __CreateGraph(self, synsets, parts_of_speech):
 		graph = TNEANet.New()
 
@@ -124,6 +141,9 @@ class WordNet:
 
 		return graph
 
+	'''
+	Adds an edge with the given symbol from node1 to node2 (and vice versa if directed = True).
+	'''
 	def __AddEdge(self, graph, node1, node2, symbol, directed=False):
 		graph.AddStrAttrDatE(graph.AddEdge(node1, node2), symbol, "symbol")
 		if not directed:
