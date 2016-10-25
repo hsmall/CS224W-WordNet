@@ -1,5 +1,4 @@
 from snap import *
-import time
 
 '''
 This class encapsulates all of the information needed to create, maintain, and analyze an instance of a WordNet graph.
@@ -14,16 +13,24 @@ More specifically, this class contains the following instance variables:
 '''
 class WordNet:
 
+	PARTS_OF_SPEECH_OFFSET = {
+		"n": 100000000,
+		"v": 200000000,
+		"a": 300000000,
+		"s": 300000000,
+		"r": 500000000
+	} 
+
 	'''
 	Initialzes a WordNet.
 	Args:
 		filenames = list of data.* filenames which contain WordNet data.
 		parts_of_speech = list of the parts of speech this WordNet should include.
 	'''
-	def __init__(self, filenames, parts_of_speech):
-		self.parts_of_speech = parts_of_speech
+	def __init__(self, filenames):
+		self.parts_of_speech = self.__GetPartsOfSpeech(filenames)
 		self.synsets = self.__ReadSynsets(filenames)
-		self.graph = self.__CreateGraph(self.synsets, parts_of_speech)
+		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
 
 		self.word_to_synsets = {word : [] for word in self.all_words}
 		for key, synset in self.synsets.items():
@@ -37,7 +44,22 @@ class WordNet:
 		return self.graph.GetStrAttrDatE(self.graph.GetEI(node1, node2), "symbol")
 
 	'''
-	Reads in synsets from a list of data.* files
+	Parses and returns the appropriate parts of speech based upon the given filenames.
+	'''
+	def __GetPartsOfSpeech(self, filenames):
+		parts_of_speech = set()
+		for filename in filenames:
+			if filename.endswith(".noun"):
+				parts_of_speech.add("n")
+			elif filename.endswith(".verb"):
+				parts_of_speech.add("v")
+			elif filename.endswith(".adj"):
+				parts_of_speech.update(["a", "s"])
+			elif filename.endswith(".adv"):
+				parts_of_speech.add("r")
+		return parts_of_speech
+	'''
+	Reads in synsets from a list of data.* files.
 	'''
 	def __ReadSynsets(self, filenames):
 		synsets = {}
@@ -65,8 +87,9 @@ class WordNet:
 	 	4. description = given description for the synset.
 	'''
 	def __ConvertToSynset(self, line):
-		key = int(line[0])
 		synset_type = line[2]
+		
+		key = int(line[0]) + WordNet.PARTS_OF_SPEECH_OFFSET[synset_type]
 
 		word_count = int(line[3], 16)
 		word_start_index = 4
@@ -80,9 +103,11 @@ class WordNet:
 		pointers = []
 		for index in range(pointer_start_index, pointer_start_index + 4 * pointer_count, 4):
 			src = int(line[index+3][0:2], 16)
-			dst = int(line[index+3][2:], 16) 
-			pointers.append({"symbol": line[index], "pos": line[index+2],
-					   		 "connection": (key, src, int(line[index+1]), dst)})
+			dst = int(line[index+3][2:], 16)
+			pos = line[index+2]
+			dst_key = int(line[index+1]) + WordNet.PARTS_OF_SPEECH_OFFSET[pos]
+			pointers.append({"symbol": line[index], "pos": pos,
+					   		 "connection": (key, src, dst_key, dst)})
 
 		description = " ".join(line[line.index("|")+1:]).strip()
 		
