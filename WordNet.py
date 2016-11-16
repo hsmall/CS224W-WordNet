@@ -3,13 +3,18 @@ from snap import *
 '''
 This class encapsulates all of the information needed to create, maintain, and analyze an instance of a WordNet graph.
 More specifically, this class contains the following instance variables:
-	1. parts_of_speech = A container of all included parts of speech in this graph.
-	2. synsets = A map from keys to synsets
-	3. graph = A TNEANet graph which holds the populated structure of the WordNet
-	4. node_to_word = A map from node_ids to words
-	5. word_to_node = A map from words to node_ids
-	6. all_words = A set containing every word in the graph
-	7. word_to_synset = A map from every word to a list of the keys for every synset containing the word
+	1.  parts_of_speech = A container of all included parts of speech in this graph.
+	2.  synsets = A map from keys to synsets
+	3.  graph = A TNEANet graph which holds the populated structure of the WordNet
+	4.  node_to_word = A map from node_ids to words
+	5.  word_to_node = A map from words to node_ids
+	6.  all_words = A set containing every word in the graph
+	7.  word_to_synset = A map from every word to a list of the keys for every synset containing the word
+	8.  time_directed_graph = A TNEANet graph which holds the populated structure of the WordNet with time relations between words included
+	9.  node_to_word_directed = A map from node_ids to words in the directed graph
+	10. word_to_node_directed = A map from wrods to node_ids in the directed graph
+	11. all_words_directed = A set containing every word in the directed graph
+
 '''
 class WordNet:
 
@@ -21,16 +26,27 @@ class WordNet:
 		"r": 500000000
 	} 
 
+	PARTS_OF_SPEECH_TRANSLATION = {
+		"n.": "n",
+		"v.": "v",
+		"adj.": "a",
+		"adv.": "r"
+	}
+
 	'''
 	Initialzes a WordNet.
 	Args:
 		filenames = list of data.* filenames which contain WordNet data.
 		parts_of_speech = list of the parts of speech this WordNet should include.
+		time_data_file = file containing information about word 'creation' dates
 	'''
-	def __init__(self, filenames):
+	def __init__(self, filenames, time_data_file):
 		self.parts_of_speech = self.__GetPartsOfSpeech(filenames)
 		self.synsets = self.__ReadSynsets(filenames)
 		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
+		self.word_and_pos_to_date = self.__ReadTimeData(time_data_file)
+		self.time_directed_graph = self.__CreateTimeDirectedGraph(self.synsets, self.parts_of_speech, self.word_and_pos_to_date)
+
 
 		self.word_to_synsets = {word : [] for word in self.all_words}
 		for key, synset in self.synsets.items():
@@ -42,6 +58,20 @@ class WordNet:
 	'''
 	def GetSymbolOnEdge(self, node1, node2):
 		return self.graph.GetStrAttrDatE(self.graph.GetEI(node1, node2), "symbol")
+
+
+	'''
+	Returns returns a pair of words in age order (older, younger)
+	'''
+	def __GetWordsInAgeOrder(self, word1, word2, part_of_speech, word_and_pos_to_date):
+		older = word1
+		newer = word2
+		word1_and_pos = word1 + part_of_speech
+		word2_and_pos = word2 + part_of_speech
+		if word_and_pos_to_date[word2_and_pos] > word_and_pos_to_date[word2_and_pos]:
+			newer = word1
+			older = word2
+		return older, newer
 
 	'''
 	Parses and returns the appropriate parts of speech based upon the given filenames.
@@ -77,6 +107,30 @@ class WordNet:
 					synsets[key] = synset
 
 		return synsets
+
+	'''
+	Reads in time data for words from the given file.
+	'''
+	def __ReadTimeData(self, filename):
+		word_and_pos_to_date = {}
+		keys = set()
+		with open(filename, 'r') as file:
+			for line in file:
+				word, parts_of_speech, year = line.split(' <delim> ')
+				parts_of_speech = parts_of_speech.split(' and ')
+				for pos in set(parts_of_speech):
+					# ignore interjections and pronouns
+					if pos in WordNet.PARTS_OF_SPEECH_TRANSLATION.keys():
+						key = word+pos
+						# add earliest year for repeat keys in data
+						if key in keys:
+							if word_and_pos_to_date[key] > int(year):
+								word_and_pos_to_date[key] = int(year)
+						else:
+							keys.add(key)
+							word_and_pos_to_date[key] = int(year)
+		return word_and_pos_to_date
+
 
 	'''
 	Takes a single line of a data file and converts it into a meaningful representation
@@ -165,6 +219,72 @@ class WordNet:
 					self.__AddEdge(graph, node1, node2, pointer["symbol"], directed=True)
 
 		return graph
+
+	'''
+	Create the time directed version of the WordNet graph.
+	'''
+	def __CreateTimeDirectedGraph(self, synsets, parts_of_speech, word_and_pos_to_date):
+		directed_graph = TNEANet.New()
+
+		# Create the super-nodes for each synset
+		self.all_words_directed = set()
+		supernodes_in_directed_graph = set()
+		words_with_time_data = word_and_pos_to_date.keys()
+		for key, synset in synsets.items():
+			add_supernode = False
+			for word in synset["words"]:
+				if word + synset["synset_type"] in words_with_time_data:
+					self.all_words_directed.add(word)
+					add_supernode = True
+			if add_supernode:
+				supernodes_in_directed_graph.add(key)
+		 		directed_graph.AddNode(key)
+
+		# Create the nodes for the individual words
+		self.node_to_word_directed = {}
+		self.word_to_node_directed = {}
+		for word in sorted(list(self.all_words_directed)):
+			node_id = directed_graph.AddNode(-1)
+			directed_graph.AddStrAttrDatN(node_id, word, "word")
+			self.node_to_word_directed[node_id] = word
+			self.word_to_node_directed[word] = node_id
+
+		# Add in edges between words
+		for key, synset in synsets.items():
+			if key not in supernodes_in_directed_graph: continue
+			# Add in connections from words to supernode for synset
+
+			for word in synset["words"]:
+				if word in self.all_words_directed:
+					self.__AddEdge(directed_graph, key, self.word_to_node_directed[word], "synset")
+			
+			# Add connections between indiviual words in synset
+			for word1 in synset["words"]:
+				if word1 not in self.all_words_directed: continue
+				for word2 in synset["words"]:
+					if word1 == word2: continue
+					if word2 not in self.all_words_directed: contiue
+					older, newer = self.__GetWordsInAgeOrder(word1, word2, synset["synset_type"], word_and_pos_to_date)
+
+					node1 = self.word_to_node_directed[older]
+					node2 = self.word_to_node_directed[newer]
+					
+					self.__AddEdge(directed_graph, node1, node2, "synonym", directed=True)
+
+			# Add connections for pointers
+			for pointer in synset["pointers"]:
+				if pointer["pos"] not in parts_of_speech: continue
+
+				_, src, key2, dst = pointer["connection"]
+				if src == 0 and dst == 0:
+					if key2 not in supernodes_in_directed_graph: continue
+					self.__AddEdge(directed_graph, key, key2, pointer["symbol"], directed=True)
+				else:
+					node1 = self.word_to_node_directed[synset["words"][src-1]]
+					node2 = self.word_to_node_directed[synsets[key2]["words"][dst-1]]
+					self.__AddEdge(directed_graph, node1, node2, pointer["symbol"], directed=True)
+
+		return directed_graph
 
 	'''
 	Adds an edge with the given symbol from node1 to node2 (and vice versa if directed = True).
