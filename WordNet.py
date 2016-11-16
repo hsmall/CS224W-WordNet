@@ -14,6 +14,8 @@ More specifically, this class contains the following instance variables:
 	9.  node_to_word_directed = A map from node_ids to words in the directed graph
 	10. word_to_node_directed = A map from wrods to node_ids in the directed graph
 	11. all_words_directed = A set containing every word in the directed graph
+	12. supernodes_in_directed_graph = A set containing all supernodes in the directed graph
+	13. synsets_directed = A map from keys to synsets with words that have time data
 
 '''
 class WordNet:
@@ -27,10 +29,11 @@ class WordNet:
 	} 
 
 	PARTS_OF_SPEECH_TRANSLATION = {
-		"n.": "n",
-		"v.": "v",
-		"adj.": "a",
-		"adv.": "r"
+		"n": "n",
+		"v": "v",
+		"adj": "a",
+		"adv": "r",
+		"s": "s"
 	}
 
 	'''
@@ -42,10 +45,11 @@ class WordNet:
 	'''
 	def __init__(self, filenames, time_data_file):
 		self.parts_of_speech = self.__GetPartsOfSpeech(filenames)
-		self.synsets = self.__ReadSynsets(filenames)
-		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
 		self.word_and_pos_to_date = self.__ReadTimeData(time_data_file)
-		self.time_directed_graph = self.__CreateTimeDirectedGraph(self.synsets, self.parts_of_speech, self.word_and_pos_to_date)
+		self.synsets, self.synsets_directed = self.__ReadSynsets(filenames)
+		self.synsets_directed = self.__CreateDirectedSynsets(self.synsets_directed)
+		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
+		self.time_directed_graph = self.__CreateTimeDirectedGraph(self.synsets_directed, self.parts_of_speech)
 
 
 		self.word_to_synsets = {word : [] for word in self.all_words}
@@ -61,17 +65,18 @@ class WordNet:
 
 
 	'''
-	Returns returns a pair of words in age order (older, younger)
+	Returns returns a pair of words in age order and whether or not the words
+	have different ages (older, younger, diffAges)
 	'''
-	def __GetWordsInAgeOrder(self, word1, word2, part_of_speech, word_and_pos_to_date):
+	def __GetWordsInAgeOrder(self, word1, word2, part_of_speech1, part_of_speech2, word_and_pos_to_date):
 		older = word1
 		newer = word2
-		word1_and_pos = word1 + part_of_speech
-		word2_and_pos = word2 + part_of_speech
+		word1_and_pos = word1 + part_of_speech1
+		word2_and_pos = word2 + part_of_speech2
 		if word_and_pos_to_date[word2_and_pos] > word_and_pos_to_date[word2_and_pos]:
 			newer = word1
 			older = word2
-		return older, newer
+		return older, newer, word_and_pos_to_date[word2_and_pos]==word_and_pos_to_date[word2_and_pos]
 
 	'''
 	Parses and returns the appropriate parts of speech based upon the given filenames.
@@ -93,6 +98,7 @@ class WordNet:
 	'''
 	def __ReadSynsets(self, filenames):
 		synsets = {}
+		directed_synsets = {}
 		for filename in filenames:
 			with open(filename, 'r') as file:
 				# Ignore the Liscense Agreements at beginning of file.
@@ -103,33 +109,61 @@ class WordNet:
 
 				file.seek(last_position)
 				for line in file:
-					key, synset = self.__ConvertToSynset(line.split(' '))
+					key, synset, directed_synset = self.__ConvertToSynset(line.split(' '))
 					synsets[key] = synset
+					directed_synsets[key] = directed_synset
 
-		return synsets
+		return synsets, directed_synsets
 
 	'''
 	Reads in time data for words from the given file.
 	'''
 	def __ReadTimeData(self, filename):
 		word_and_pos_to_date = {}
-		keys = set()
+		self.words_with_time_data = set()
 		with open(filename, 'r') as file:
 			for line in file:
 				word, parts_of_speech, year = line.split(' <delim> ')
-				parts_of_speech = parts_of_speech.split(' and ')
+				parts_of_speech = set(parts_of_speech.split(' and '))
+				if "adj" in  parts_of_speech: parts_of_speech.add("s")
 				for pos in set(parts_of_speech):
 					# ignore interjections and pronouns
 					if pos in WordNet.PARTS_OF_SPEECH_TRANSLATION.keys():
 						key = word+pos
 						# add earliest year for repeat keys in data
-						if key in keys:
+						if key in self.words_with_time_data:
 							if word_and_pos_to_date[key] > int(year):
 								word_and_pos_to_date[key] = int(year)
 						else:
-							keys.add(key)
+							self.words_with_time_data.add(key)
 							word_and_pos_to_date[key] = int(year)
 		return word_and_pos_to_date
+
+
+	'''
+	Updates synsets_directed by removing empty synsets
+	that have no corresponding time data
+	'''
+	def __CreateDirectedSynsets(self, directed_synsets):
+		# find empty synsets
+		emptySynsets = set()
+		for key, synset in directed_synsets.items():
+			if len(synset["words"])==0: emptySynsets.add(key)
+
+		# remove empty synsets from self.synsets_directed
+		for key in emptySynsets:
+			del directed_synsets[key]
+
+		# remove empty synsets from pointer lists
+		for key, synset in directed_synsets.items():
+			p = []
+			for pointer in synset["pointers"]:
+				key, src, dst_key, dst = pointer["connection"]
+				if dst_key not in emptySynsets:
+					p.append(pointer)
+			synset["pointers"] = p
+
+		return directed_synsets
 
 
 	'''
@@ -151,8 +185,11 @@ class WordNet:
 		pointer_start_index = word_start_index + 2 * word_count + 1
 		
 		words = []
+		words_directed = []
 		for index in range(word_start_index, word_start_index + 2 * word_count, 2):
 			words.append(line[index])
+			if line[index]+synset_type in self.words_with_time_data:
+				words_directed.append(line[index])
 
 		pointers = []
 		for index in range(pointer_start_index, pointer_start_index + 4 * pointer_count, 4):
@@ -165,8 +202,9 @@ class WordNet:
 
 		description = " ".join(line[line.index("|")+1:]).strip()
 		
-		return (key, {"synset_type": synset_type, "words": words,
-				  	  "pointers": pointers, "description": description})
+		return key, {"synset_type": synset_type, "words": words,
+				  	  "pointers": pointers, "description": description}, {"synset_type": synset_type, "words": words_directed,
+				  	  "pointers": pointers, "description": description}
 
 	'''
 	Create the basic version of the WordNet graph.
@@ -223,22 +261,15 @@ class WordNet:
 	'''
 	Create the time directed version of the WordNet graph.
 	'''
-	def __CreateTimeDirectedGraph(self, synsets, parts_of_speech, word_and_pos_to_date):
+	def __CreateTimeDirectedGraph(self, synsets_directed, parts_of_speech):
 		directed_graph = TNEANet.New()
-
 		# Create the super-nodes for each synset
 		self.all_words_directed = set()
-		supernodes_in_directed_graph = set()
-		words_with_time_data = word_and_pos_to_date.keys()
-		for key, synset in synsets.items():
-			add_supernode = False
-			for word in synset["words"]:
-				if word + synset["synset_type"] in words_with_time_data:
-					self.all_words_directed.add(word)
-					add_supernode = True
-			if add_supernode:
-				supernodes_in_directed_graph.add(key)
-		 		directed_graph.AddNode(key)
+		self.supernodes_in_directed_graph = set()
+		for key, synset in synsets_directed.items():
+			self.all_words_directed.update(synset["words"])
+			self.supernodes_in_directed_graph.add(key)
+		 	directed_graph.AddNode(key)
 
 		# Create the nodes for the individual words
 		self.node_to_word_directed = {}
@@ -250,39 +281,40 @@ class WordNet:
 			self.word_to_node_directed[word] = node_id
 
 		# Add in edges between words
-		for key, synset in synsets.items():
-			if key not in supernodes_in_directed_graph: continue
+		for key, synset in synsets_directed.items():
 			# Add in connections from words to supernode for synset
 
 			for word in synset["words"]:
-				if word in self.all_words_directed:
-					self.__AddEdge(directed_graph, key, self.word_to_node_directed[word], "synset")
+				self.__AddEdge(directed_graph, key, self.word_to_node_directed[word], "synset")
 			
 			# Add connections between indiviual words in synset
 			for word1 in synset["words"]:
-				if word1 not in self.all_words_directed: continue
 				for word2 in synset["words"]:
 					if word1 == word2: continue
-					if word2 not in self.all_words_directed: contiue
-					older, newer = self.__GetWordsInAgeOrder(word1, word2, synset["synset_type"], word_and_pos_to_date)
+					older, newer, diffAges = self.__GetWordsInAgeOrder(word1, word2, synset["synset_type"], synset["synset_type"], self.word_and_pos_to_date)
 
 					node1 = self.word_to_node_directed[older]
 					node2 = self.word_to_node_directed[newer]
 					
-					self.__AddEdge(directed_graph, node1, node2, "synonym", directed=True)
+					self.__AddEdge(directed_graph, node1, node2, "synonym", directed=diffAges)
 
 			# Add connections for pointers
 			for pointer in synset["pointers"]:
 				if pointer["pos"] not in parts_of_speech: continue
 
-				_, src, key2, dst = pointer["connection"]
+				key1, src, key2, dst = pointer["connection"]
 				if src == 0 and dst == 0:
-					if key2 not in supernodes_in_directed_graph: continue
-					self.__AddEdge(directed_graph, key, key2, pointer["symbol"], directed=True)
+					self.__AddEdge(directed_graph, key1, key2, pointer["symbol"], directed=True)
 				else:
-					node1 = self.word_to_node_directed[synset["words"][src-1]]
-					node2 = self.word_to_node_directed[synsets[key2]["words"][dst-1]]
-					self.__AddEdge(directed_graph, node1, node2, pointer["symbol"], directed=True)
+					word1 = self.synsets[key1]["words"][src-1]
+					word2 = self.synsets[key2]["words"][dst-1]
+					pos1 = self.synsets[key1]["synset_type"]
+					pos2 = self.synsets[key2]["synset_type"]
+					if word1+pos1 not in self.words_with_time_data or word2+pos2 not in self.words_with_time_data: continue
+					older, newer, diffAges = self.__GetWordsInAgeOrder(word1, word2, pos1, pos2, self.word_and_pos_to_date)
+					node1 = self.word_to_node_directed[older]
+					node2 = self.word_to_node_directed[newer]
+					self.__AddEdge(directed_graph, node1, node2, pointer["symbol"], directed=diffAges)
 
 		return directed_graph
 
