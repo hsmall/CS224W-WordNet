@@ -142,8 +142,8 @@ def getAveragesByDecade(wordnet, calculate_betweenness=False):
 		decade_to_deg_centr[decade] = avg_deg_centr
 
 		if calculate_betweenness:
-			decade_to_words = getWordsPerDecade(wordnet)
-			plotAndPrintYearData(decade_to_words, "Num Words Per Decade")
+            avg_btw_centr = getListAvg(decade_to_btw_centr[decade])
+            decade_to_btw_centr[decade] = avg_btw_centr
 
 	return decade_to_in_deg, decade_to_out_deg, decade_to_cc, decade_to_deg_centr, decade_to_close_centr, decade_to_btw_centr
 
