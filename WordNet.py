@@ -45,7 +45,7 @@ class WordNet:
 	'''
 	def __init__(self, filenames, time_data_file):
 		self.parts_of_speech = self.__GetPartsOfSpeech(filenames)
-		self.word_and_pos_to_date = self.__ReadTimeData(time_data_file)
+		self.word_and_pos_to_date, self.word_to_date = self.__ReadTimeData(time_data_file)
 		self.synsets, self.synsets_directed = self.__ReadSynsets(filenames)
 		self.synsets_directed = self.__CreateDirectedSynsets(self.synsets_directed)
 		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
@@ -120,7 +120,9 @@ class WordNet:
 	'''
 	def __ReadTimeData(self, filename):
 		word_and_pos_to_date = {}
+		word_to_date = {}
 		self.words_with_time_data = set()
+		words = set()
 		with open(filename, 'r') as file:
 			for line in file:
 				word, parts_of_speech, year = line.split(' <delim> ')
@@ -131,13 +133,20 @@ class WordNet:
 					if pos in WordNet.PARTS_OF_SPEECH_TRANSLATION.keys():
 						key = word+pos
 						# add earliest year for repeat keys in data
+						if word in words:
+							if word_to_date[word] > int(year):
+								word_to_date[word] = int(year)
+						else:
+							words.add(word)
+							word_to_date[word] = int(year)
+
 						if key in self.words_with_time_data:
 							if word_and_pos_to_date[key] > int(year):
 								word_and_pos_to_date[key] = int(year)
 						else:
 							self.words_with_time_data.add(key)
 							word_and_pos_to_date[key] = int(year)
-		return word_and_pos_to_date
+		return word_and_pos_to_date, word_to_date
 
 
 	'''
