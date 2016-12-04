@@ -347,7 +347,7 @@ class WordNet:
 			node_id = directed_graph_no_supernodes.AddNode(-1)
 			directed_graph_no_supernodes.AddStrAttrDatN(node_id, word, "word")
 			self.node_to_word_directed_no_supernodes[node_id] = word
-			self.d[word] = node_id
+			self.word_to_node_directed_no_supernodes[word] = node_id
 
 		# Add in edges between words
 		for key, synset in synsets_directed.items():
@@ -357,8 +357,8 @@ class WordNet:
 					if word1 == word2: continue
 					older, newer, diffAges = self.__GetWordsInAgeOrder(word1, word2, synset["synset_type"], synset["synset_type"], self.word_and_pos_to_date)
 
-					node1 = self.word_to_node_directed[older]
-					node2 = self.word_to_node_directed[newer]
+					node1 = self.word_to_node_directed_no_supernodes[older]
+					node2 = self.word_to_node_directed_no_supernodes[newer]
 					
 					self.__AddEdgeWithWeight(directed_graph_no_supernodes, node1, node2, 1, directed=not diffAges)
 
@@ -389,8 +389,8 @@ class WordNet:
 					pos2 = self.synsets[key2]["synset_type"]
 					if word1+pos1 not in self.words_with_time_data or word2+pos2 not in self.words_with_time_data: continue
 					older, newer, diffAges = self.__GetWordsInAgeOrder(word1, word2, pos1, pos2, self.word_and_pos_to_date)
-					node1 = self.word_to_node_directed[older]
-					node2 = self.word_to_node_directed[newer]
+					node1 = self.word_to_node_directed_no_supernodes[older]
+					node2 = self.word_to_node_directed_no_supernodes[newer]
 					self.__AddEdgeWithWeight(directed_graph_no_supernodes, node1, node2, 1, directed=not diffAges)
 
 		return directed_graph_no_supernodes
