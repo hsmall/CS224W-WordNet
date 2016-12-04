@@ -66,7 +66,7 @@ def getStatsByYear(node_to_out, node_to_in, wordnet, calc_btw_centr=True):
 		plotAndPrintYearData(decade_to_btw_centr, "Average Node Betweenness Centrality by Year")
 
 def getInAndOutAvgByDecade(wordnet, node_to_out, node_to_in):
-	word_node_ids = set(wordnet.node_to_word_directed.keys())
+	word_node_ids = set(wordnet.node_to_word_directed_no_supernodes.keys())
 	min_decade = 600
 	max_decade = 2000
 	year = min_decade
@@ -101,7 +101,7 @@ def getInAndOutAvgByDecade(wordnet, node_to_out, node_to_in):
 
 
 def getWordAndDecade(node_id, wordnet):
-	word = wordnet.node_to_word_directed[node_id]
+	word = wordnet.node_to_word_directed_no_supernodes[node_id]
 	year = wordnet.word_to_date[word]
 	decade = year - year%10
 
@@ -113,7 +113,7 @@ def getListAvg(list_of_values):
 
 
 def getAveragesByDecade(wordnet, calculate_betweenness=False):
-	word_node_ids = set(wordnet.node_to_word_directed.keys())
+	word_node_ids = set(wordnet.node_to_word_directed_no_supernodes.keys())
 	min_decade = 600
 	max_decade = 2000
 	year = min_decade

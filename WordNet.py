@@ -341,13 +341,13 @@ class WordNet:
 		directed_graph_no_supernodes = TNEANet.New()
 
 		# Create the nodes for the individual words
-		self.node_to_word_directed = {}
-		self.word_to_node_directed = {}
+		self.node_to_word_directed_no_supernodes = {}
+		self.word_to_node_directed_no_supernodes = {}
 		for word in sorted(list(self.all_words_directed)):
 			node_id = directed_graph_no_supernodes.AddNode(-1)
 			directed_graph_no_supernodes.AddStrAttrDatN(node_id, word, "word")
-			self.node_to_word_directed[node_id] = word
-			self.word_to_node_directed[word] = node_id
+			self.node_to_word_directed_no_supernodes[node_id] = word
+			self.word_to_node_directed_no_supernodes[word] = node_id
 
 		# Add in edges between words
 		for key, synset in synsets_directed.items():
