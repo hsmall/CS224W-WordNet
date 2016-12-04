@@ -30,23 +30,23 @@ def getStatsForWordNetGraph(wordnet):
 	print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.graph))
 
 def getStatsForDirectedGraph(wordnet):
-	# print "Directed WordNet graph stats:"
-	# print "Number of Total Nodes: {0}, Regular Nodes: {1}, Super-Nodes: {2}".format(*GetNodeCounts(wordnet, directed=True))
-	# print "Number of Total Edges: {0}, Across Synsets: {1}, Between Super-Nodes: {2}".format(*GetEdgeCountsDirected(wordnet))
+	print "Directed WordNet graph stats:"
+	print "Number of Total Nodes: {0}, Regular Nodes: {1}, Super-Nodes: {2}".format(*GetNodeCounts(wordnet, directed=True))
+	print "Number of Total Edges: {0}, Across Synsets: {1}, Between Super-Nodes: {2}".format(*GetEdgeCountsDirected(wordnet))
 
-	# degree_distr, min_degree, max_degree = GetDegreeDistribution(wordnet.time_directed_graph)
-	# print "Degree Distribution: {0}".format(degree_distr)
+	degree_distr, min_degree, max_degree = GetDegreeDistribution(wordnet.time_directed_graph)
+	print "Degree Distribution: {0}".format(degree_distr)
 
-	# average_degree = sum([i * degree_distr[i] for i in range(len(degree_distr))])
-	# print "Average Degree: {0}, Min: {1}, Max: {2}".format(average_degree, min_degree, max_degree)
+	average_degree = sum([i * degree_distr[i] for i in range(len(degree_distr))])
+	print "Average Degree: {0}, Min: {1}, Max: {2}".format(average_degree, min_degree, max_degree)
 
-	# plt.plot(range(len(degree_distr)), degree_distr)
-	# plt.xlabel('Degree'); plt.ylabel('% of Nodes')
-	# plt.xscale('log'); plt.yscale('log');
-	# plt.show()
+	plt.plot(range(len(degree_distr)), degree_distr)
+	plt.xlabel('Degree'); plt.ylabel('% of Nodes')
+	plt.xscale('log'); plt.yscale('log');
+	#plt.show()
 
-	# print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.time_directed_graph))
-	# print
+	print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.time_directed_graph))
+	print
 
 	getStatsByYear(wordnet, calc_btw_centr=True)
 
@@ -162,7 +162,7 @@ def getAveragesByDecade(wordnet, calculate_betweenness=False):
 def plotAndPrintYearData(decade_to_avg, title):
 	# print title
 	# print decade_to_avg
-	
+
 	x = decade_to_avg.keys()
 	y = decade_to_avg.values()
 
