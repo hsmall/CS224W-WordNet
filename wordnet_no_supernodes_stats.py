@@ -9,8 +9,6 @@ from collections import defaultdict
 def __main__():
 	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt")
 	
-	g = wordnet.time_directed_graph_no_supernodes
-
 	node_to_out_deg, node_to_in_deg = getGeneralStats(wordnet)
 
 	getStatsByYear(node_to_out_deg, node_to_in_deg, wordnet)

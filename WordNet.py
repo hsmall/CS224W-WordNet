@@ -19,6 +19,8 @@ More specifically, this class contains the following instance variables:
 	13. synsets_directed = A map from keys to synsets with words that have time data
 	14. directed_graph_no_supernodes = A TNEANet graph which holds the populated structure of the 
 	                                   WordNet with time relations between words included and supernodes excluded
+    15. node_to_word_directed_no_supernodes = A map from node_ids to words in the directed graph
+    16  word_to_node_directed_no_supernodes = A map from wrods to node_ids in the directed graph
 
 '''
 class WordNet:
