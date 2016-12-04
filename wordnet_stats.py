@@ -7,7 +7,7 @@ import numpy as np
 
 def __main__():
 	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt")
-	getStatsForWordNetGraph(wordnet)
+	#getStatsForWordNetGraph(wordnet)
 	print
 	getStatsForDirectedGraph(wordnet)
 
@@ -30,25 +30,25 @@ def getStatsForWordNetGraph(wordnet):
 	print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.graph))
 
 def getStatsForDirectedGraph(wordnet):
-	print "Directed WordNet graph stats:"
-	print "Number of Total Nodes: {0}, Regular Nodes: {1}, Super-Nodes: {2}".format(*GetNodeCounts(wordnet, directed=True))
-	print "Number of Total Edges: {0}, Across Synsets: {1}, Between Super-Nodes: {2}".format(*GetEdgeCountsDirected(wordnet))
+	# print "Directed WordNet graph stats:"
+	# print "Number of Total Nodes: {0}, Regular Nodes: {1}, Super-Nodes: {2}".format(*GetNodeCounts(wordnet, directed=True))
+	# print "Number of Total Edges: {0}, Across Synsets: {1}, Between Super-Nodes: {2}".format(*GetEdgeCountsDirected(wordnet))
 
-	degree_distr, min_degree, max_degree = GetDegreeDistribution(wordnet.time_directed_graph)
-	print "Degree Distribution: {0}".format(degree_distr)
+	# degree_distr, min_degree, max_degree = GetDegreeDistribution(wordnet.time_directed_graph)
+	# print "Degree Distribution: {0}".format(degree_distr)
 
-	average_degree = sum([i * degree_distr[i] for i in range(len(degree_distr))])
-	print "Average Degree: {0}, Min: {1}, Max: {2}".format(average_degree, min_degree, max_degree)
+	# average_degree = sum([i * degree_distr[i] for i in range(len(degree_distr))])
+	# print "Average Degree: {0}, Min: {1}, Max: {2}".format(average_degree, min_degree, max_degree)
 
-	plt.plot(range(len(degree_distr)), degree_distr)
-	plt.xlabel('Degree'); plt.ylabel('% of Nodes')
-	plt.xscale('log'); plt.yscale('log');
-	plt.show()
+	# plt.plot(range(len(degree_distr)), degree_distr)
+	# plt.xlabel('Degree'); plt.ylabel('% of Nodes')
+	# plt.xscale('log'); plt.yscale('log');
+	# plt.show()
 
-	print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.time_directed_graph))
-	print
+	# print "Average Clustering Coefficient: {0}".format(GetClustCf(wordnet.time_directed_graph))
+	# print
 
-	getStatsByYear(wordnet)
+	getStatsByYear(wordnet, calc_btw_centr=True)
 
 def getWordAndDecade(node_id, wordnet):
 	word = wordnet.node_to_word_directed[node_id]
@@ -142,16 +142,27 @@ def getAveragesByDecade(wordnet, calculate_betweenness=False):
 		decade_to_deg_centr[decade] = avg_deg_centr
 
 		if calculate_betweenness:
-            avg_btw_centr = getListAvg(decade_to_btw_centr[decade])
-            decade_to_btw_centr[decade] = avg_btw_centr
+			avg_btw_centr = getListAvg(decade_to_btw_centr[decade])
+			decade_to_btw_centr[decade] = avg_btw_centr
+
+	print "in-deg", decade_to_in_deg
+	print 
+	print "out-deg", decade_to_out_deg
+	print 
+	print "cc", decade_to_cc
+	print 
+	print "deg-centr", decade_to_deg_centr
+	print 
+	print "close-centr", decade_to_close_centr
+	print 
+	print "btw-centr", decade_to_btw_centr
 
 	return decade_to_in_deg, decade_to_out_deg, decade_to_cc, decade_to_deg_centr, decade_to_close_centr, decade_to_btw_centr
 
 def plotAndPrintYearData(decade_to_avg, title):
-	print title
-	print decade_to_in_deg
-	print
-
+	# print title
+	# print decade_to_avg
+	
 	x = decade_to_avg.keys()
 	y = decade_to_avg.values()
 
@@ -160,7 +171,8 @@ def plotAndPrintYearData(decade_to_avg, title):
 	plt.ylabel('Average Value')
 	plt.title(title)
 	plt.savefig('graphs/hist-'+title+'.png')
-	plt.show()
+	#plt.show()
+	plt.close()
 
 def getWordsPerDecade(wordnet):
 	min_decade = 600
