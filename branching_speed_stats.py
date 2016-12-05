@@ -49,17 +49,29 @@ def LoadWordNet():
 # Computes the branching speed for each node (or word) at each of the given |depths|, then saves them to a file
 # based upon the given |filename_template|
 def SaveBranchingSpeedsToFile(wordnet, depths, filename_template):
+	# all_years_histogram contains the expected average distance between a word in a given year
+	# and all words that follow it in time.
 	all_years = sorted(wordnet.word_to_date.values())
 	all_years_histogram = {}
 	for i in range(len(all_years)):
 		if i < len(all_years)-1 and all_years[i] == all_years[i+1]: continue
 		all_years_histogram[all_years[i]] = mean(all_years[i:]) - all_years[i] 
 
-	print(all_years_histogram)
 	for max_depth in depths:
 		print "Calculating Branching Speeds (Depth = {0})".format(max_depth)
-		node_to_branching_speed = ComputeBranchingSpeed(wordnet, all_years_histogram, max_depth)
+		node_to_branching_speed, node_to_influence_set_words = ComputeBranchingSpeed(wordnet, all_years_histogram, max_depth)
 		
+		'''
+		for node, branching_speed in sorted(node_to_branching_speed.items(), reverse=True, key=lambda x: x[1])[:20]:
+			word = wordnet.node_to_word_directed_no_supernodes[node]
+			year = wordnet.word_to_date[word]
+			print "{0} ({1}) = {2} --- {3}".format(word, year, branching_speed, node_to_influence_set_words[node])
+		for node, branching_speed in sorted(node_to_branching_speed.items(), reverse=True, key=lambda x: x[1])[-20:]:
+			word = wordnet.node_to_word_directed_no_supernodes[node]
+			year = wordnet.word_to_date[word]
+			print "{0} ({1}) = {2} --- {3}".format(word, year, branching_speed, node_to_influence_set_words[node])
+		'''
+
 		branching_speed_by_decade = {decade: list() for decade in range(600, 2001, 10)}
 
 		for node in node_to_branching_speed.keys():
@@ -75,6 +87,7 @@ def SaveBranchingSpeedsToFile(wordnet, depths, filename_template):
 # Compute the branching speed for each node using the given |max_depth|
 def ComputeBranchingSpeed(wordnet, all_years_histogram, max_depth):
 	node_to_branching_speed = {}
+	node_to_influence_set_words = {}
 	graph = wordnet.time_directed_graph_no_supernodes
 	nodes = [node.GetId() for node in graph.Nodes()]
 	for i in range(len(nodes)):
@@ -83,24 +96,30 @@ def ComputeBranchingSpeed(wordnet, all_years_histogram, max_depth):
 		# Computing average distance between word and its influence set (in years)
 		influence_set = ComputeInfluenceSet(graph, nodes[i], max_depth)
 		influence_set_years = []
+		influence_set_words = []
+
+		current_word = wordnet.node_to_word_directed_no_supernodes[nodes[i]]
+		current_year = wordnet.word_to_date[current_word]
 
 		for node in influence_set:
 			word = wordnet.node_to_word_directed_no_supernodes[node]
 			year = wordnet.word_to_date[word]
-			influence_set_years.append(year)
+			if year >= current_year:
+				influence_set_years.append(year)
+				influence_set_words.append((word, year))
 
-		word = wordnet.node_to_word_directed_no_supernodes[nodes[i]]
-		year = wordnet.word_to_date[word]
 		average_year_in_influence_set = mean(influence_set_years)
 		
 		# Branching Speed = 1 - (true avg dist to words in influence set) / (expected avg dist to words in influence)
 		if average_year_in_influence_set > 0:
-			branching_speed = 1 - (average_year_in_influence_set - year) / all_years_histogram[year]
+			branching_speed = 1 - (average_year_in_influence_set - current_year) / all_years_histogram[current_year]
 			node_to_branching_speed[nodes[i]] = branching_speed
+			#print (word, year, branching_speed, influence_set_words)
 		else:
 			node_to_branching_speed[nodes[i]] = 0
+		node_to_influence_set_words[nodes[i]] = influence_set_words
 	
-	return node_to_branching_speed
+	return node_to_branching_speed, node_to_influence_set_words
 
 def mean(vector):
 	return sum(vector) / float(len(vector)) if len(vector) != 0 else 0

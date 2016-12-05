@@ -10,10 +10,9 @@ def __main__():
 
 	# The next couple lines lines compute all of the branching factors for the graph and then saves them to a file
 	# CAN COMMENT THEM OUT to avoid recomputing when just trying to tweak the graphs
-	'''
-	wordnet = LoadWordNet()
-	SaveBranchingFactorsToFile(wordnet, depths, filename_template)
-	'''
+	#wordnet = LoadWordNet()
+	#SaveBranchingFactorsToFile(wordnet, depths, filename_template)
+	
 
 	# This section manipulates the computed branching factors and produces a graph
 	for max_depth in depths:
