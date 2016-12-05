@@ -1,4 +1,6 @@
 from snap import *
+import random
+import time
 
 '''
 This class encapsulates all of the information needed to create, maintain, and analyze an instance of a WordNet graph.
@@ -48,11 +50,16 @@ class WordNet:
 		parts_of_speech = list of the parts of speech this WordNet should include.
 		time_data_file = file containing information about word 'creation' dates
 	'''
-	def __init__(self, filenames, time_data_file):
+	def __init__(self, filenames, time_data_file, is_null_model = False):
 		self.parts_of_speech = self.__GetPartsOfSpeech(filenames)
 		self.word_and_pos_to_date, self.word_to_date = self.__ReadTimeData(time_data_file)
 		self.synsets, self.synsets_directed = self.__ReadSynsets(filenames)
 		self.synsets_directed = self.__CreateDirectedSynsets(self.synsets_directed)
+
+		if is_null_model:
+			self.synsets = self.__ShuffleSynsetConnections(self.synsets)
+			self.synsets_directed = self.__ShuffleSynsetConnections(self.synsets_directed)
+
 		self.graph = self.__CreateGraph(self.synsets, self.parts_of_speech)
 		self.time_directed_graph = self.__CreateTimeDirectedGraph(self.synsets_directed, self.parts_of_speech)
 		self.time_directed_graph_no_supernodes = self.__CreateTimeDirectedGraphNoSuperNodes(self.synsets_directed, self.parts_of_speech)
@@ -120,6 +127,58 @@ class WordNet:
 					directed_synsets[key] = directed_synset
 
 		return synsets, directed_synsets
+
+	'''
+	Randomly moves around the connections between supernodes and the connections between words
+	in seperate synsets to generate a null-model.
+	'''
+	def __ShuffleSynsetConnections(self, synsets):
+		# Count the relevant edges and remove all pointers from synsets
+		between_synsets = 0
+		across_synsets = 0
+		
+		for synset in synsets.values():
+			for pointer in synset["pointers"]:
+				src_key, src, dst_key, dst = pointer["connection"]
+				if src == 0 and dst == 0:
+					between_synsets += 1
+				else:
+					across_synsets += 1
+			synset["pointers"] = list()
+		
+		random.seed(7)
+		synset_keys = synsets.keys()
+
+		# Randomly generate between-synset edges
+		for i in range(between_synsets/2):
+			src_key, dst_key = tuple(random.sample(synset_keys, 2))
+			src_synset, dst_synset = synsets[src_key], synsets[dst_key]
+			
+			src_synset["pointers"].append({"symbol": "unknown",
+										   "pos": dst_synset["synset_type"],
+										   "connection": (src_key, 0, dst_key, 0)})
+			dst_synset["pointers"].append({"symbol": "unknown",
+										   "pos": src_synset["synset_type"],
+										   "connection": (dst_key, 0, src_key, 0)})
+
+		# Randomly generate across-synset edges
+		for i in range(across_synsets/2):
+			src_key, dst_key = tuple(random.sample(synset_keys, 2))
+			src_synset, dst_synset = synsets[src_key], synsets[dst_key]
+			src_word = random.randint(1, len(src_synset["words"]))
+			dst_word = random.randint(1, len(dst_synset["words"]))
+			
+			src_synset["pointers"].append({"symbol": "unknown",
+										   "pos": dst_synset["synset_type"],
+										   "connection": (src_key, src_word, dst_key, dst_word)})
+			dst_synset["pointers"].append({"symbol": "unknown",
+										   "pos": src_synset["synset_type"],
+										   "connection": (dst_key, dst_word, src_key, src_word)})
+	
+		for key, synset in synsets.items():
+			if synset["pointers"] == None:
+				print key
+		return synsets
 
 	'''
 	Reads in time data for words from the given file.
