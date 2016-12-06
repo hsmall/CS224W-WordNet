@@ -7,16 +7,16 @@ import math
 
 def __main__():
 	depths = [1, 2, 3] # What depths to run for computing the branching speeds
-	filename_template = "branching_speed_by_decade_{0}.txt" #filenames where data is saved
+	filename_template = "branching_graphs/null_branching_speed_by_decade_{0}.txt" #filenames where data is saved
 	
 
 	# CAN COMMENT THIS LINE OUT to avoid recomputing when just trying to tweak the graphs
-	#wordnet = LoadWordNet()
-	#SaveBranchingSpeedsToFile(wordnet, depths, filename_template)
+	# wordnet = LoadWordNet(is_null_model=True)
+	# SaveBranchingSpeedsToFile(wordnet, depths, filename_template)
 
 	# This section manipulates the computed branching factors and produces a graph
 	for max_depth in depths:
-		branching_speed_by_era = GroupDecades(pickle.load(open(filename_template.format(max_depth), "r")), 10)
+		branching_speed_by_era = GroupDecades(pickle.load(open(filename_template.format(max_depth), "r")), 1)
 
 		average_by_era = []
 		for era in sorted(branching_speed_by_era.keys()):
@@ -35,16 +35,16 @@ def __main__():
 
 		plt.plot(sorted(branching_speed_by_era.keys()), average_by_era, label="Max Depth = {0}".format(max_depth))
 	
-	plt.title('Average Branching Speed by Century')
-	plt.xlabel('Century'); plt.ylabel('Average Branching Speed')
+	plt.title('Average Branching Speed by Decade')
+	plt.xlabel('Decade'); plt.ylabel('Average Branching Speed')
 	plt.legend(loc=2)
 	plt.show()
 
-def LoadWordNet():
+def LoadWordNet(is_null_model=False):
 	print "Loading WordNet Graph..."
-	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt")
+	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt", is_null_model)
 	print "Finished Loading Graph!"
-	return wordnet 
+	return wordnet
 
 # Computes the branching speed for each node (or word) at each of the given |depths|, then saves them to a file
 # based upon the given |filename_template|

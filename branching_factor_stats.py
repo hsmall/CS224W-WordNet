@@ -6,13 +6,12 @@ import pickle
 
 def __main__():
 	depths = [1, 2, 3] # What depths to run for computing the branching factors
-	filename_template = "branching_factor_by_decade_{0}.txt" #filenames where data is saved
+	filename_template = "branching_graphs/null_branching_factor_by_decade_{0}.txt" #filenames where data is saved
 
 	# The next couple lines lines compute all of the branching factors for the graph and then saves them to a file
 	# CAN COMMENT THEM OUT to avoid recomputing when just trying to tweak the graphs
-	#wordnet = LoadWordNet()
+	#wordnet = LoadWordNet(is_null_model=True)
 	#SaveBranchingFactorsToFile(wordnet, depths, filename_template)
-	
 
 	# This section manipulates the computed branching factors and produces a graph
 	for max_depth in depths:
@@ -29,8 +28,8 @@ def __main__():
 				if out_degree == 0: continue
 				
 				# I made a seperate graph for each of the below branching factor definitions.
-				#avg += branching_factor #This is the standard "branching factor" as we defined at our meeting
-				avg += (branching_factor/out_degree**max_depth) #This weights the branching factor by the out degree of the node to remove bias of high-degree nodes
+				avg += branching_factor #This is the standard "branching factor" as we defined at our meeting
+				#avg += (branching_factor/out_degree**max_depth) #This weights the branching factor by the out degree of the node to remove bias of high-degree nodes
 				
 			avg = avg / len(branching_factor_by_era[era])
 			average_by_era.append(avg)
@@ -38,16 +37,16 @@ def __main__():
 			#print "{0} -> {1}".format(decade, branching_factor_by_decade[decade])
 			#print "{0}\n".format(avg)
 
-		plt.plot(sorted(branching_factor_by_era.keys()), average_by_era, label="Max Depth = {0}".format(max_depth))
+		plt.plot(sorted(branching_factor_by_era.keys()), normalize(average_by_era), label="Max Depth = {0}".format(max_depth))
 	
-	plt.title('Average Weighted Branching Factor by Century')
-	plt.xlabel('Century'); plt.ylabel('Average Weighted Branching Factor')
+	plt.title('Normalized Average Branching Factor by Century')
+	plt.xlabel('Century'); plt.ylabel('Normalized Average Branching Factor')
 	plt.legend()
 	plt.show()
 
-def LoadWordNet():
+def LoadWordNet(is_null_model=False):
 	print "Loading WordNet Graph..."
-	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt")
+	wordnet = WordNet(["data/dict/data.noun", "data/dict/data.verb", "data/dict/data.adj", "data/dict/data.adv"], "data/word_to_year_formatted.txt", is_null_model)
 	print "Finished Loading Graph!"
 	return wordnet
 
